@@ -16,8 +16,12 @@ if not os.path.exists(args.toc_file):
 with open(args.toc_file, "r") as f:
     config = yaml.safe_load(f)
 
-if "toc" not in config:
-    config["toc"] = []
+if "project" not in config:
+    config["project"] = {}
+if "toc" not in config["project"]:
+    config["project"]["toc"] = []
+
+toc = config["project"]["toc"]
 
 # Suche nach Abschnitt "Cookbook Gallery"
 section_found = False
