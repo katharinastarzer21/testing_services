@@ -1,0 +1,107 @@
+name: "Cookbook Production Build (MyST)"
+
+on:
+  issues:
+    types: [closed]
+
+jobs:
+  deploy:
+    if: github.event.issue.user.login == 'katharinastarzer21'
+    runs-on: ubuntu-latest
+
+    env:
+      GALLERY_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+
+    steps:
+      - name: Checkout DestinE repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Save issue body to file
+        run: echo "${{ github.event.issue.body }}" > issue_body.txt
+
+      - name: Install required Python packages
+        run: |
+          pip install pyyaml
+
+      - name: Parse Issue Data
+        id: parse
+        run: |
+          python scripts/parse_issue.py 
+        # Expecting: sets env vars like ROOT_PATH, REPO_URL
+
+      - name: Clone submitted repository
+        run: |
+          git clone "$REPO_URL" submitted_repo
+          if [ -f submitted_repo/README.md ] && [ ! -f submitted_repo/index.md ]; then
+            cp submitted_repo/README.md submitted_repo/index.md
+          fi
+        env:
+          REPO_URL: ${{ env.REPO_URL }}
+
+      - name: Ensure myst.yml exists
+        run: |
+            if [ ! -f submitted_repo/myst.yml ]; then
+            cat << 'EOF' > submitted_repo/myst.yml
+                    version: 1
+            project:
+            title: ${{ env.COOKBOOK_TITLE }}
+            site:
+            title: ${{ env.COOKBOOK_TITLE }}
+            template: book-theme
+            url: ${{ env.GALLERY_URL }}
+            base: /production/${{ env.ROOT_PATH }}
+            EOF
+                fi
+      - name: Install MyST CLI
+        run: npm install -g mystmd
+
+      - name: Build Cookbook with MyST
+        working-directory: submitted_repo
+        run: myst build --html
+
+      - name: Deploy cookbook
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: submitted_repo/_build/html
+          destination_dir: production/${{ env.ROOT_PATH }}
+          keep_files: true
+
+      - name: Update central myst.yml
+        run: |
+          python scripts/update_gallery_toc.py \
+            --path "production/${{ env.ROOT_PATH }}/index.md" \
+            --title "${{ env.COOKBOOK_TITLE }}" \
+            --toc_file "myst.yml"
+
+      - name: Commit and push myst.yml
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add myst.yml
+          git commit -m "Add '${{ env.COOKBOOK_TITLE }}' to myst.yml" || echo "No changes"
+          git push origin main
+
+      - name: Build central site
+        run: myst build --html
+
+      - name: Deploy central site
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/html
+          destination_dir: .
+          keep_files: true
+
+      - name: Comment with production link
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            ✅ Cookbook deployed!
+            🔗 ${{ env.GALLERY_URL }}/production/${{ env.ROOT_PATH }}/index.html
