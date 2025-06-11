@@ -13,7 +13,6 @@ Destination Earth Data Lake Laboratory, which contains additional information fo
 
 
 Further information available in DestinE Data Lake documentation: https://destine-data-lake-docs.data.destination-earth.eu/en/latest/index.html
-This is a test.
 
 
 >**Additional ressources:**
