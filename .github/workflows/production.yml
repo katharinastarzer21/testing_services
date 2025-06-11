@@ -4,6 +4,11 @@ on:
   issues:
     types: [closed]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write 
+
 jobs:
   deploy:
     if: github.event.issue.user.login == 'katharinastarzer21'
