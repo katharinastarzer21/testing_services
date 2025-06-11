@@ -46,17 +46,18 @@ jobs:
       - name: Ensure myst.yml exists
         run: |
             if [ ! -f submitted_repo/myst.yml ]; then
-            cat << 'EOF' > submitted_repo/myst.yml
-                    version: 1
-            project:
-            title: ${{ env.COOKBOOK_TITLE }}
-            site:
-            title: ${{ env.COOKBOOK_TITLE }}
-            template: book-theme
-            url: ${{ env.GALLERY_URL }}
-            base: /production/${{ env.ROOT_PATH }}
-            EOF
-                fi
+            printf "%s\n" \
+                "version: 1" \
+                "project:" \
+                "  title: ${{ env.COOKBOOK_TITLE }}" \
+                "site:" \
+                "  title: ${{ env.COOKBOOK_TITLE }}" \
+                "  template: book-theme" \
+                "  url: ${{ env.GALLERY_URL }}" \
+                "  base: /production/${{ env.ROOT_PATH }}" \
+                > submitted_repo/myst.yml
+            fi
+            
       - name: Install MyST CLI
         run: npm install -g mystmd
 
