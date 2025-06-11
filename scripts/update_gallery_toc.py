@@ -24,7 +24,12 @@ if "toc" not in config["project"]:
 
 toc = config["project"]["toc"]
 
-# Suche nach Abschnitt (z. B. "Cookbook Gallery")
+# Berechne URL
+base_url = f"https://{os.environ['GITHUB_REPOSITORY_OWNER']}.github.io/{os.environ['GITHUB_REPOSITORY'].split('/')[-1]}"
+cookbook_slug = args.path.split("/")[1]
+cookbook_url = f"{base_url}/production/{cookbook_slug}/"
+
+# Suche nach Abschnitt
 section_found = False
 for entry in toc:
     if entry.get("title") == args.section:
@@ -32,18 +37,18 @@ for entry in toc:
         if "children" not in entry:
             entry["children"] = []
 
-        already_exists = any(child.get("file") == args.path for child in entry["children"])
+        already_exists = any(child.get("url") == cookbook_url for child in entry["children"])
         if not already_exists:
             entry["children"].append({
                 "title": args.title,
-                "file": args.path
+                "url": cookbook_url
             })
-            print(f"✅ Added {args.path} under '{args.section}'")
+            print(f"✅ Added {cookbook_url} under '{args.section}'")
         else:
-            print(f"ℹ️ {args.path} already exists under '{args.section}'")
+            print(f"ℹ️ {cookbook_url} already exists under '{args.section}'")
         break
 
-# Wenn Abschnitt noch nicht existiert → erstelle ihn
+# Falls Abschnitt noch nicht existiert
 if not section_found:
     print(f"🆕 Creating section '{args.section}' and adding first entry")
     toc.append({
@@ -51,7 +56,7 @@ if not section_found:
         "children": [
             {
                 "title": args.title,
-                "file": args.path
+                "url": cookbook_url
             }
         ]
     })
