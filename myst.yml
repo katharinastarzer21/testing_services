@@ -44,7 +44,10 @@ project:
       - file: STACK/ExtremeDT-DataCube.ipynb
       - file: STACK/ExtremeDT-DataCube-xViewer.ipynb
       - file: STACK/DEDL_StackService_Dask.ipynb
-  
+  - title: Cookbook Gallery
+    children:
+    - title: My first Test
+      url: https://katharinastarzer21.github.io/myst_DEDL_page/production/MYFIRSTTEST/
 site:
   template: book-theme
   options:
