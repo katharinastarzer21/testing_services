@@ -16,6 +16,7 @@ if not os.path.exists(args.toc_file):
 with open(args.toc_file, "r") as f:
     config = yaml.safe_load(f)
 
+# Ensure correct structure
 if "project" not in config:
     config["project"] = {}
 if "toc" not in config["project"]:
@@ -23,9 +24,9 @@ if "toc" not in config["project"]:
 
 toc = config["project"]["toc"]
 
-# Suche nach Abschnitt "Cookbook Gallery"
+# Suche nach Abschnitt (z. B. "Cookbook Gallery")
 section_found = False
-for entry in config["toc"]:
+for entry in toc:
     if entry.get("title") == args.section:
         section_found = True
         if "children" not in entry:
@@ -42,10 +43,10 @@ for entry in config["toc"]:
             print(f"ℹ️ {args.path} already exists under '{args.section}'")
         break
 
-# Wenn "Cookbook Gallery" noch nicht existiert
+# Wenn Abschnitt noch nicht existiert → erstelle ihn
 if not section_found:
     print(f"🆕 Creating section '{args.section}' and adding first entry")
-    config["toc"].append({
+    toc.append({
         "title": args.section,
         "children": [
             {
