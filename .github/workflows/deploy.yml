@@ -90,6 +90,20 @@ jobs:
         working-directory: submitted_repo
         run: myst build --html
 
+      - name: Prepare cookbook source for gallery build
+        if: github.event_name == 'issues'
+        run: |
+          mkdir -p production/${{ env.ROOT_PATH }}
+          if [ -f submitted_repo/index.md ]; then
+            cp submitted_repo/index.md production/${{ env.ROOT_PATH }}/index.md
+          elif [ -f submitted_repo/README.md ]; then
+            cp submitted_repo/README.md production/${{ env.ROOT_PATH }}/index.md
+          else
+            echo "❌ No index.md or README.md in submitted repo!"
+            ls -l submitted_repo
+            exit 1
+          fi
+
       - name: Prepare cookbook output
         if: github.event_name == 'issues'
         run: |
@@ -112,6 +126,7 @@ jobs:
             --title "${{ env.COOKBOOK_TITLE }}" \
             --base-path "production/${{ env.ROOT_PATH }}/" \
             --output "myst.yml"
+            
       - name: Commit and push myst.yml
         if: github.event_name == 'issues'
         run: |
