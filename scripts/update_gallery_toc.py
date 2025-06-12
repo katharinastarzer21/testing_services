@@ -3,10 +3,10 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--path", required=True, help="Path to inserted index.md (e.g. production/my-cookbook/index.md)")
-parser.add_argument("--title", required=True, help="Displayed title")
-parser.add_argument("--toc_file", default="myst.yml", help="Path to myst.yml")
-parser.add_argument("--section", default="Cookbook Gallery", help="Title of section to insert under")
+parser.add_argument("--path", required=True, help="Pfad zur index.md z. B. production/my-cookbook/index.md")
+parser.add_argument("--title", required=True, help="Anzeigetitel im TOC")
+parser.add_argument("--toc_file", default="myst.yml", help="Pfad zur myst.yml Datei")
+parser.add_argument("--section", default="Cookbook Gallery", help="TOC-Abschnittsname")
 args = parser.parse_args()
 
 if not os.path.exists(args.toc_file):
@@ -16,39 +16,29 @@ if not os.path.exists(args.toc_file):
 with open(args.toc_file, "r") as f:
     config = yaml.safe_load(f)
 
-# Ensure correct structure
-if "project" not in config:
-    config["project"] = {}
-if "toc" not in config["project"]:
-    config["project"]["toc"] = []
-
+config.setdefault("project", {})
+config["project"].setdefault("toc", [])
 toc = config["project"]["toc"]
 
-# Berechne URL
-base_url = f"https://{os.environ['GITHUB_REPOSITORY_OWNER']}.github.io/{os.environ['GITHUB_REPOSITORY'].split('/')[-1]}"
-cookbook_slug = args.path.split("/")[1]
-cookbook_url = f"{base_url}/production/{cookbook_slug}/"
+file_path = args.path
 
-# Suche nach Abschnitt
 section_found = False
 for entry in toc:
     if entry.get("title") == args.section:
         section_found = True
-        if "children" not in entry:
-            entry["children"] = []
+        entry.setdefault("children", [])
 
-        already_exists = any(child.get("url") == cookbook_url for child in entry["children"])
+        already_exists = any(child.get("file") == file_path for child in entry["children"])
         if not already_exists:
             entry["children"].append({
                 "title": args.title,
-                "url": cookbook_url
+                "file": file_path
             })
-            print(f"✅ Added {cookbook_url} under '{args.section}'")
+            print(f"✅ Added {file_path} under '{args.section}'")
         else:
-            print(f"ℹ️ {cookbook_url} already exists under '{args.section}'")
+            print(f"ℹ️ {file_path} already exists under '{args.section}'")
         break
 
-# Falls Abschnitt noch nicht existiert
 if not section_found:
     print(f"🆕 Creating section '{args.section}' and adding first entry")
     toc.append({
@@ -56,11 +46,11 @@ if not section_found:
         "children": [
             {
                 "title": args.title,
-                "url": cookbook_url
+                "file": file_path
             }
         ]
     })
 
-# Speichern
+# myst.yml speichern
 with open(args.toc_file, "w") as f:
     yaml.dump(config, f, sort_keys=False)
