@@ -20,34 +20,52 @@ toctree_blocks = re.findall(toctree_pattern, content, flags=re.DOTALL)
 
 toc_files = []
 for block in toctree_blocks:
-    # Hole alle Zeilen zwischen den toctree-Tags
     lines = block.splitlines()[1:]  # skip opening ```
     for line in lines:
         line = line.strip()
         if not line or line.startswith(":"):
             continue
-        # Füge die Datei mit base-path hinzu
         toc_files.append(args.base_path + line)
 
-# 2. Erstelle myst.yml Struktur
-myst_config = {
-    "version": 1,
-    "project": {
-        "title": args.title,
-        "toc": [
-            {
-                "file": args.base_path + "index.md",
-                "children": [{"file": f} for f in toc_files]
-            }
-        ]
-    },
-    "site": {
-        "template": "book-theme"
-    }
-}
+# 2. Lese ggf. bestehende myst.yml ein
+if os.path.exists(args.output):
+    with open(args.output, "r", encoding="utf-8") as f:
+        myst_config = yaml.safe_load(f)
+    if myst_config is None:
+        myst_config = {}
+else:
+    myst_config = {}
 
-# 3. Schreibe myst.yml
+# 3. Initialisiere Grundstruktur, falls nötig
+if "version" not in myst_config:
+    myst_config["version"] = 1
+if "project" not in myst_config:
+    myst_config["project"] = {}
+if "site" not in myst_config:
+    myst_config["site"] = {"template": "book-theme"}
+if "toc" not in myst_config["project"]:
+    myst_config["project"]["toc"] = []
+
+toc = myst_config["project"]["toc"]
+
+# 4. Prüfe, ob Cookbook bereits im TOC ist
+cookbook_file = args.base_path + "index.md"
+already = False
+for entry in toc:
+    if entry.get("file") == cookbook_file:
+        already = True
+        # Optional: aktualisiere die Children, falls sie sich ändern
+        entry["children"] = [{"file": f} for f in toc_files]
+        break
+
+if not already:
+    toc.append({
+        "file": cookbook_file,
+        "children": [{"file": f} for f in toc_files]
+    })
+
+# 5. Schreibe myst.yml zurück
 with open(args.output, "w", encoding="utf-8") as f:
-    yaml.dump(myst_config, f, sort_keys=False)
+    yaml.dump(myst_config, f, sort_keys=False, allow_unicode=True)
 
-print(f"✅ myst.yml wurde erstellt: {args.output}")
+print(f"✅ myst.yml wurde aktualisiert: {args.output}")
