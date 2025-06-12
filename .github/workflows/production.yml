@@ -1,4 +1,4 @@
-name: "Cookbook Production Build (MyST)"
+name: Cookbook Production Build (MyST)
 
 on:
   issues:
@@ -36,7 +36,7 @@ jobs:
       - name: Parse Issue Data
         id: parse
         run: python scripts/parse_issue.py
-        # This sets env vars like ROOT_PATH, REPO_URL, COOKBOOK_TITLE
+        # Exports REPO_URL, ROOT_PATH, COOKBOOK_TITLE, etc.
 
       - name: Clone submitted repository
         run: |
@@ -78,11 +78,11 @@ jobs:
 
       - name: Commit and push myst.yml
         run: |
-            git config --global user.name "github-actions"
-            git config --global user.email "actions@github.com"
-            git add myst.yml
-            git commit -m "Add '${{ env.COOKBOOK_TITLE }}' to myst.yml" || echo "No changes"
-            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add myst.yml
+          git commit -m "Add '${{ env.COOKBOOK_TITLE }}' to myst.yml" || echo "No changes"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
 
       - name: Build main gallery
         run: myst build --html
