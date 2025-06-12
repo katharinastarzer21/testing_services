@@ -47,8 +47,6 @@ project:
   - title: Cookbook Gallery
     children:
     - title: My first Test
-      url: https://katharinastarzer21.github.io/myst_DEDL_page/production/MYFIRSTTEST/
-    - title: My first Test
       file: production/MYFIRSTTEST/index.md
 site:
   template: book-theme
