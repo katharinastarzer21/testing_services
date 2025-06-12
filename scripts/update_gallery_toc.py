@@ -1,56 +1,53 @@
-import yaml
 import argparse
+import yaml
 import os
+import re
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--path", required=True, help="Pfad zur index.md z. B. production/my-cookbook/index.md")
-parser.add_argument("--title", required=True, help="Anzeigetitel im TOC")
-parser.add_argument("--toc_file", default="myst.yml", help="Pfad zur myst.yml Datei")
-parser.add_argument("--section", default="Cookbook Gallery", help="TOC-Abschnittsname")
+parser.add_argument("--index", required=True, help="Pfad zur index.md")
+parser.add_argument("--title", required=True, help="Projekttitel")
+parser.add_argument("--base-path", required=True, help="Basis-Pfad, z.B. production/MYCOOKBOOK/")
+parser.add_argument("--output", default="myst.yml", help="Pfad für die zu speichernde myst.yml")
 args = parser.parse_args()
 
-if not os.path.exists(args.toc_file):
-    print(f"🛑 {args.toc_file} not found – aborting.")
-    exit(1)
+# 1. Lese index.md und extrahiere Toctree-Einträge
+with open(args.index, "r", encoding="utf-8") as f:
+    content = f.read()
 
-with open(args.toc_file, "r") as f:
-    config = yaml.safe_load(f)
+# Suche nach {toctree} Block
+toctree_pattern = r"```{toctree}.*?```"
+toctree_blocks = re.findall(toctree_pattern, content, flags=re.DOTALL)
 
-config.setdefault("project", {})
-config["project"].setdefault("toc", [])
-toc = config["project"]["toc"]
+toc_files = []
+for block in toctree_blocks:
+    # Hole alle Zeilen zwischen den toctree-Tags
+    lines = block.splitlines()[1:]  # skip opening ```
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith(":"):
+            continue
+        # Füge die Datei mit base-path hinzu
+        toc_files.append(args.base_path + line)
 
-file_path = args.path
-
-section_found = False
-for entry in toc:
-    if entry.get("title") == args.section:
-        section_found = True
-        entry.setdefault("children", [])
-
-        already_exists = any(child.get("file") == file_path for child in entry["children"])
-        if not already_exists:
-            entry["children"].append({
-                "title": args.title,
-                "file": file_path
-            })
-            print(f"✅ Added {file_path} under '{args.section}'")
-        else:
-            print(f"ℹ️ {file_path} already exists under '{args.section}'")
-        break
-
-if not section_found:
-    print(f"🆕 Creating section '{args.section}' and adding first entry")
-    toc.append({
-        "title": args.section,
-        "children": [
+# 2. Erstelle myst.yml Struktur
+myst_config = {
+    "version": 1,
+    "project": {
+        "title": args.title,
+        "toc": [
             {
-                "title": args.title,
-                "file": file_path
+                "file": args.base_path + "index.md",
+                "children": [{"file": f} for f in toc_files]
             }
         ]
-    })
+    },
+    "site": {
+        "template": "book-theme"
+    }
+}
 
-# myst.yml speichern
-with open(args.toc_file, "w") as f:
-    yaml.dump(config, f, sort_keys=False)
+# 3. Schreibe myst.yml
+with open(args.output, "w", encoding="utf-8") as f:
+    yaml.dump(myst_config, f, sort_keys=False)
+
+print(f"✅ myst.yml wurde erstellt: {args.output}")
