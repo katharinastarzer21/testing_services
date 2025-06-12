@@ -6,8 +6,9 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  id-token: write
   pages: write
-  id-token: write 
 
 jobs:
   deploy:
