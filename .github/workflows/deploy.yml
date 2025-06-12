@@ -91,6 +91,12 @@ jobs:
         working-directory: submitted_repo
         run: myst build --html
 
+      - name: Prepare cookbook output
+        if: github.event_name == 'issues'
+        run: |
+          mkdir -p production/${{ env.ROOT_PATH }}
+          cp submitted_repo/_build/html/index.md production/${{ env.ROOT_PATH }}/ind
+
       - name: Update central myst.yml
         if: github.event_name == 'issues'
         run: |
