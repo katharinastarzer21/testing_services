@@ -46,8 +46,9 @@ project:
       - file: STACK/DEDL_StackService_Dask.ipynb
   - title: Cookbook Gallery
     children:
-      file: production/MYFIRSTTEST/index.md
+      - file: production/MYFIRSTTEST/index.md
 site:
+  base: /myst_DEDl_page
   template: book-theme
   options:
     style: ./_static/custom.css
