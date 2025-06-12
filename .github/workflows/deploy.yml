@@ -95,8 +95,20 @@ jobs:
         if: github.event_name == 'issues'
         run: |
           mkdir -p production/${{ env.ROOT_PATH }}
-          cp submitted_repo/_build/html/index.md production/${{ env.ROOT_PATH }}/index.md
-
+          # Try index.md in subfolder, then README.md in subfolder, then top-level index.md or README.md
+          if [ -f submitted_repo/_build/html/${{ env.ROOT_PATH }}/index.md ]; then
+            cp submitted_repo/_build/html/${{ env.ROOT_PATH }}/index.md production/${{ env.ROOT_PATH }}/index.md
+          elif [ -f submitted_repo/_build/html/${{ env.ROOT_PATH }}/README.md ]; then
+            cp submitted_repo/_build/html/${{ env.ROOT_PATH }}/README.md production/${{ env.ROOT_PATH }}/index.md
+          elif [ -f submitted_repo/_build/html/index.md ]; then
+            cp submitted_repo/_build/html/index.md production/${{ env.ROOT_PATH }}/index.md
+          elif [ -f submitted_repo/_build/html/README.md ]; then
+            cp submitted_repo/_build/html/README.md production/${{ env.ROOT_PATH }}/index.md
+          else
+            echo "❌ Neither index.md nor README.md found in expected build locations!"
+            find submitted_repo/_build/html/
+            exit 1
+          fi
       - name: Update central myst.yml
         if: github.event_name == 'issues'
         run: |
