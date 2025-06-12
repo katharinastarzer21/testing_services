@@ -1,8 +1,11 @@
-name: Cookbook Production Build (MyST)
+name: MyST Deploy & Cookbook Integration
 
 on:
+  push:
+    branches: [main]
   issues:
     types: [closed]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -10,36 +13,51 @@ permissions:
   id-token: write
   pages: write
 
+env:
+  # `BASE_URL` determines, relative to the root of the domain, the URL that your site is served from.
+  # E.g., if your site lives at `https://mydomain.org/myproject`, set `BASE_URL=/myproject`.
+  # If, instead, your site lives at the root of the domain, at `https://mydomain.org`, set `BASE_URL=''`.
+  BASE_URL: /${{ github.event.repository.name }}
+
 jobs:
-  deploy:
-    # Nur Cookbook-Automatisierung für eine bestimmte Nutzerin
-    if: github.event.issue.user.login == 'katharinastarzer21'
+  build-and-deploy:
     runs-on: ubuntu-latest
+
+    # Only allow cookbook automation for a specific user on issue close
+    if: github.event_name != 'issues' || github.event.issue.user.login == 'katharinastarzer21'
 
     env:
       GALLERY_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
 
     steps:
-      - name: Checkout main branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      # Python for cookbook automation
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
+      # Node for MyST CLI
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+
+      # Only parse issue if this is an issue event
       - name: Save issue body to file
+        if: github.event_name == 'issues'
         run: echo "${{ github.event.issue.body }}" > issue_body.txt
 
       - name: Install required Python packages
+        if: github.event_name == 'issues'
         run: pip install pyyaml
 
       - name: Parse Issue Data
+        if: github.event_name == 'issues'
         id: parse
         run: python scripts/parse_issue.py
-        # Exports REPO_URL, ROOT_PATH, COOKBOOK_TITLE, etc.
 
       - name: Clone submitted repository
+        if: github.event_name == 'issues'
         run: |
           git clone "$REPO_URL" submitted_repo
           if [ -f submitted_repo/README.md ] && [ ! -f submitted_repo/index.md ]; then
@@ -49,6 +67,7 @@ jobs:
           REPO_URL: ${{ env.REPO_URL }}
 
       - name: Ensure myst.yml exists
+        if: github.event_name == 'issues'
         run: |
           if [ ! -f submitted_repo/myst.yml ]; then
             printf "%s\n" \
@@ -62,53 +81,62 @@ jobs:
               "  base: /production/${{ env.ROOT_PATH }}" \
               > submitted_repo/myst.yml
           fi
-
       - name: Install MyST CLI
         run: npm install -g mystmd
 
+      # Build the submitted cookbook if issue event
       - name: Build submitted cookbook
+        if: github.event_name == 'issues'
         working-directory: submitted_repo
         run: myst build --html
 
-      # Kopiere das Markdown für die zentrale Gallery (für TOC und Build)
-      - name: Prepare cookbook source for gallery build
+      - name: Prepare cookbook output
+        if: github.event_name == 'issues'
         run: |
           mkdir -p production/${{ env.ROOT_PATH }}
-          if [ -f submitted_repo/index.md ]; then
-            cp submitted_repo/index.md production/${{ env.ROOT_PATH }}/index.md
-          elif [ -f submitted_repo/README.md ]; then
-            cp submitted_repo/README.md production/${{ env.ROOT_PATH }}/index.md
+          if [ -f submitted_repo/_build/html/index.html ]; then
+            cp submitted_repo/_build/html/index.html production/${{ env.ROOT_PATH }}/index.html
+          elif [ -f submitted_repo/_build/html/README.html ]; then
+            cp submitted_repo/_build/html/README.html production/${{ env.ROOT_PATH }}/index.html
           else
-            echo "❌ No index.md or README.md in submitted repo!"
-            ls -l submitted_repo
+            echo "❌ Neither index.html nor README.html found in expected build locations!"
+            find submitted_repo/_build/html/
             exit 1
           fi
-
+          
       - name: Update central myst.yml
+        if: github.event_name == 'issues'
         run: |
-          python scripts/update_gallery_toc.py \
-            --path "production/${{ env.ROOT_PATH }}/index.md" \
+         python scripts/update_gallery_toc.py \
+            --index "production/${{ env.ROOT_PATH }}/index.md" \
             --title "${{ env.COOKBOOK_TITLE }}" \
-            --toc_file "myst.yml"
-
+            --base-path "production/${{ env.ROOT_PATH }}/" \
+            --output "myst.yml"
       - name: Commit and push myst.yml
+        if: github.event_name == 'issues'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add myst.yml
           git commit -m "Add '${{ env.COOKBOOK_TITLE }}' to myst.yml" || echo "No changes"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
-
+      # Always build the main gallery (after any cookbook integration)
       - name: Build main gallery
         run: myst build --html
 
-      - name: Prepare final deploy folder
+      # If cookbook, copy built cookbook into gallery output
+      - name: Prepare final deploy folder (issue event)
+        if: github.event_name == 'issues'
         run: |
           mkdir -p full_site
           cp -r _build/html/* full_site/
           mkdir -p full_site/production/${{ env.ROOT_PATH }}
           cp -r submitted_repo/_build/html/* full_site/production/${{ env.ROOT_PATH }}/
-
+      - name: Prepare deploy folder (push event)
+        if: github.event_name != 'issues'
+        run: |
+          mkdir -p full_site
+          cp -r _build/html/* full_site/
       - name: Upload deploy artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -119,6 +147,7 @@ jobs:
         id: deployment
 
       - name: Comment with production link
+        if: github.event_name == 'issues'
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.issue.number }}
