@@ -94,10 +94,11 @@ jobs:
       - name: Update central myst.yml
         if: github.event_name == 'issues'
         run: |
-          python scripts/update_gallery_toc.py \
-            --path "production/${{ env.ROOT_PATH }}/index.md" \
+         python scripts/update_gallery_toc.py \
+            --index "production/${{ env.ROOT_PATH }}/index.md" \
             --title "${{ env.COOKBOOK_TITLE }}" \
-            --toc_file "myst.yml"
+            --base-path "production/${{ env.ROOT_PATH }}/" \
+            --output "myst.yml"
 
       - name: Commit and push myst.yml
         if: github.event_name == 'issues'
