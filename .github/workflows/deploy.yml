@@ -42,6 +42,9 @@ jobs:
         with:
           node-version: 18.x
 
+      - name: Install required Python packages
+        run: pip install pyyaml
+
       # Only parse issue if this is an issue event
       - name: Save issue body to file
         if: github.event_name == 'issues'
@@ -126,7 +129,7 @@ jobs:
             --title "${{ env.COOKBOOK_TITLE }}" \
             --base-path "production/${{ env.ROOT_PATH }}/" \
             --output "myst.yml"
-            
+
       - name: Commit and push myst.yml
         if: github.event_name == 'issues'
         run: |
@@ -147,11 +150,13 @@ jobs:
           cp -r _build/html/* full_site/
           mkdir -p full_site/production/${{ env.ROOT_PATH }}
           cp -r submitted_repo/_build/html/* full_site/production/${{ env.ROOT_PATH }}/
+
       - name: Prepare deploy folder (push event)
         if: github.event_name != 'issues'
         run: |
           mkdir -p full_site
           cp -r _build/html/* full_site/
+
       - name: Upload deploy artifact
         uses: actions/upload-pages-artifact@v3
         with:
