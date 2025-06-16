@@ -59,10 +59,11 @@ for entry in toc:
         break
 
 if not already:
-    toc.append({
-        "file": cookbook_file,
-        "children": [{"file": f} for f in toc_files]
-    })
+        toc.append({
+            "title": args.title,
+            "file": cookbook_file,
+            "children": [{"file": f} for f in toc_files]
+        })
 
 # 5. Schreibe myst.yml zurück
 with open(args.output, "w", encoding="utf-8") as f:
