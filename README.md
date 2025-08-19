@@ -1,58 +1,54 @@
-# DestinE-DataLake-Lab
-<img src="./img/DestinE-banner.jpg"
-     alt="Destination Earth banner"
-/>
+# EODC E2E Observability (Local)
 
-<img style="float:left; width:5%" src="./img/EUMETSAT-icon.png"/> **Author:** EUMETSAT 
-<br>
+Lokaler Stack zum Testen von **Prometheus + Pushgateway + Grafana** für E2E-Testmetriken.
 
-Destination Earth Data Lake Laboratory, which contains additional information for working with DestinE Data Lake services:
-- [Harmonised Data Access](https://github.com/destination-earth/DestinE-DataLake-Lab/tree/main/HDA) (Juypter notebooks examples + Python Tools)
-- [STACK service](https://github.com/destination-earth/DestinE-DataLake-Lab/tree/main/STACK) (Juypter Notebook examples on how to use DASK for near data processing)
-- [HOOK service](https://github.com/destination-earth/DestinE-DataLake-Lab/tree/main/HOOK) (Juypter Notebook examples on how to use HOOK for workflows)
+## Inhalt
+- **Docker Compose** für Prometheus, Pushgateway, Grafana (inkl. Prometheus-Datasource).
+- **scripts/push_probe.py**: Mini-Pusher (simuliert Pass/Fail & Dauer).
+- **tests/test_dask_gateway_e2e.py**: Beispieltest mit **DRY_RUN**, der Metriken in den Pushgateway schreibt.
+- **Grafana-Dashboard** wird automatisch provisioniert (einfache Kacheln für Pass/Fail & Dauer).
 
+## Voraussetzungen
+- Docker & Docker Compose
+- Python 3 (nur falls du `push_probe.py`/Tests lokal ausführen willst)
 
-Further information available in DestinE Data Lake documentation: https://destine-data-lake-docs.data.destination-earth.eu/en/latest/index.html
+## Start
+```bash
+docker compose up -d
+# Prometheus: http://localhost:9090
+# Pushgateway: http://localhost:9091
+# Grafana:    http://localhost:3000  (Login: admin / admin)
+```
 
+## Erste Metrik pushen (ohne Python)
+```bash
+echo 'eodc_e2e_test_pass{service="dask_gateway",env="dev"} 1' \
+ | curl --data-binary @- http://localhost:9091/metrics/job/e2e_tests/run/local
+```
 
->**Additional ressources:**
->- DestinE Data Portfolio: https://hda.data.destination-earth.eu/ui/catalog
->- DataLake Priority services: https://hda.data.destination-earth.eu/ui/services 
->- HDA SWAGGER UI: https://hda.data.destination-earth.eu/docs/
->
+## Python-Probe (optional)
+```bash
+python3 -m pip install -r requirements.txt
+export PUSHGATEWAY_URL=http://localhost:9091
+python3 scripts/push_probe.py
+```
 
-<br>
+## Beispieltest (DRY_RUN lokal)
+```bash
+export DRY_RUN=1
+export PUSHGATEWAY_URL=http://localhost:9091
+python3 tests/test_dask_gateway_e2e.py
+```
+Danach siehst du in Grafana/Prometheus:
+- `eodc_e2e_test_pass{service="dask_gateway",env="dev"}`
+- `eodc_e2e_test_duration_seconds{service="dask_gateway",env="dev",stage="total"}`
 
-**DestinE Platform Insula Service Users**
-<br>
-Please perform the following and select my_env kernel when running the provided Notebooks<br>
+## Stoppen
+```bash
+docker compose down -v
+```
 
-Open a terminal window (File, New, Terminal) and run the following commands in sequence:
-
-Create a virtual environment: 
-     
-     python -m venv /home/jovyan/my_env
-
-Activate it: 
-     
-     source /home/jovyan/my_env/bin/activate
-
-Install required dependencies for this example Notebooks:
-
-     pip install -r /home/jovyan/datalake-lab/requirements.txt
-
-Verify the installation:
-     
-     pip list | grep destinelab
-
-This should give:
-
-destinelab         0.9
-
-Install kernel my_env. Run the command:
-
-     python -m ipykernel install --name my_env --user
-
-Select the kernel my_env from the top-right menu of these notebooks.
-
-Users who already have a previous version of the 'my_env' environment installed, should delete the kernel before running the steps above. To delete the my_env kernel please run the following command: 'jupyter kernelspec uninstall my_env' from a terminal window.
+## Nächste Schritte (Firma)
+- `PUSHGATEWAY_URL` auf internen Endpoint stellen (z. B. `https://pushgateway.company.internal:9091`).
+- Self-hosted Runner in GitHub Actions nutzen und den Push-Step in den Workflow einbauen.
+- Dashboard/Alerts anpassen/erweitern.

@@ -1,0 +1,56 @@
+{
+  "id": null,
+  "uid": "e2elocal",
+  "title": "E2E Local Overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "E2E Pass (0/1)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "last_over_time(eodc_e2e_test_pass{service=\"dask_gateway\",env=\"dev\"}[1h])",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ]
+        },
+        "orientation": "auto"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Total Duration (s)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "eodc_e2e_test_duration_seconds{service=\"dask_gateway\",env=\"dev\",stage=\"total\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list"
+        }
+      }
+    }
+  ]
+}
