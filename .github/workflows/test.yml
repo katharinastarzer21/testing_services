@@ -69,14 +69,12 @@ jobs:
           path: results/logs/*.log
           if-no-files-found: warn
 
-      # Optional: wirklich ins Repo pushen
       - name: Commit and push log files
         if: always()
         run: |
-          set -e
-          git fetch origin main
-          git checkout main
-          git pull --rebase origin main
-          git add -f results/logs/test_dask_gateway.log
-          git commit -m "Update E2E logs [skip ci]" || exit 0
-          git push origin main
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git pull --autostash || git reset --hard origin/main 
+          git add results/logs/test_DaskGateway.log
+          git commit -m "Updated Dask Gateway test logs" || echo "No changes to commit"
+          git push
