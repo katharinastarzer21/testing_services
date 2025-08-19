@@ -2,10 +2,6 @@ name: Test Dask Gateway
 
 on:
   push:
-    paths:
-      - 'scripts/test_dask.py'
-    paths-ignore:
-      - 'results/logs/**'   # verhindert Endlos-Trigger durch eigene Log-Commits
   schedule:
     - cron: "0 * * * *"
   workflow_dispatch:
