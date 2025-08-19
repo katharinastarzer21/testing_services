@@ -54,7 +54,7 @@ jobs:
       - name: Convert logs to metrics (from logs)
         if: always()
         env:
-          PUSHGATEWAY_URL: ${{ secrets.PUSHGATEWAY_URL }}
+          PUSHGATEWAY_URL: http://localhost:9091/
           E2E_ENV: ${{ env.E2E_ENV }}
           LOG_DIR: ${{ env.LOG_DIR }}
           WINDOW_MINUTES: "60"
