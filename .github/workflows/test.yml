@@ -40,22 +40,12 @@ jobs:
         run: |
           python scripts/test_dask.py
 
-      # ⬇️ NEU: Logs → Prometheus-Metriken (Pushgateway)
-      - name: Convert logs to metrics (from logs)
-        if: always()
-        env:
-          PUSHGATEWAY_URL: http://localhost:9091   # z.B. http://pushgateway:9091
-          E2E_ENV: ${{ env.E2E_ENV }}
-          LOG_DIR: ${{ env.LOG_DIR }}
-          WINDOW_MINUTES: "60"
+      - name: Process logs
         run: |
           python scripts/logs_to_metrics.py
 
-      # Artefakt statt ins Repo committen (sauberer)
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Upload logs as artifacts
+        uses: actions/upload-artifact@v2
         with:
-          name: e2e-logs-${{ github.run_id }}
+          name: logs
           path: results/logs/*.log
-          retention-days: 7
