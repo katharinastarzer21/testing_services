@@ -3,6 +3,7 @@ import os, glob
 from datetime import datetime, timedelta
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 
+
 # Konfig über ENV
 PUSHGATEWAY_URL = os.environ.get("PUSHGATEWAY_URL", "http://localhost:9091")
 ENV            = os.environ.get("E2E_ENV", "dev")
@@ -11,6 +12,12 @@ WINDOW_MINUTES = int(os.environ.get("WINDOW_MINUTES", "60"))
 
 OK_TOKENS   = {"SUCCESS", "OK", "PASS"}
 FAIL_TOKENS = {"FAILURE", "ERROR", "FAIL"}
+
+
+# am Kopf von scripts/logs_to_metrics.py
+from urllib.parse import urlparse
+host = urlparse(PUSHGATEWAY_URL).netloc
+print(f"[logs_to_metrics] pushing to {host}, env={ENV}, window={WINDOW_MINUTES}min")
 
 def parse_line(line: str):
     # erwartet: "YYYY-MM-DD HH:MM[:SS], STATUS, message"

@@ -4,6 +4,18 @@ from unittest.mock import patch
 from datetime import datetime
 import os
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # lädt .env aus dem aktuellen/Eltern-Ordner
+
+username = os.getenv("EODC_USERNAME")
+password = os.getenv("EODC_PASSWORD")
+
+if not username or not password:
+    raise ValueError("EODC_USERNAME/EODC_PASSWORD fehlen")
+
+
 LOG_DIR = "results/logs"
 LOG_FILE = os.path.join(LOG_DIR, "test_dask_gateway.log") 
 

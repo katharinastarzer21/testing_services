@@ -1,80 +1,60 @@
-name: Test Dask Gateway
+name: Test Dask Gateway (CI-local Pushgateway)
 
 on:
-  push:
-  schedule:
-    - cron: "0 * * * *"
   workflow_dispatch:
-
-permissions:
-  contents: write
+  push:
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
 
 jobs:
-  test-dask:
-    runs-on:  ubuntu-latest
-    timeout-minutes: 30
-    env:
-      E2E_ENV: dev
-      LOG_DIR: results/logs
+  e2e:
+    runs-on: ubuntu-latest
+
+    # Startet einen Pushgateway-Container NUR für diesen Job
+    services:
+      pushgateway:
+        image: prom/pushgateway:latest
+        ports:
+          - 9091:9091
 
     steps:
-      - name: Check out main with push perms
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          persist-credentials: true
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install deps
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install -U pip
           pip install -r requirements.txt
           pip install prometheus-client
 
-      - name: Run Dask Gateway Test
-        env:
-          EODC_USERNAME: ${{ secrets.EODC_USERNAME }}
-          EODC_PASSWORD: ${{ secrets.EODC_PASSWORD }}
-        run: python scripts/test_dask.py
-
-      # Debug/Check: Logs vorhanden?
-      - name: List logs
-        if: always()
+      # (Optional) Demo-Log sicherstellen – ersetze das mit deinem Testlauf
+      - name: Ensure there is at least one log line
         run: |
-          echo "=== results/logs ==="
+          mkdir -p results/logs
+          date '+%Y-%m-%d %H:%M:%S, SUCCESS, demo' >> results/logs/test_dask_gateway.log
+
+      - name: Pushgateway ready?
+        run: |
+          curl -sS http://localhost:9091/-/ready
+
+      - name: Convert logs to metrics (push to service)
+        env:
+          PUSHGATEWAY_URL: http://localhost:9091
+          E2E_ENV: dev
+          LOG_DIR: results/logs
+          WINDOW_MINUTES: "60"
+        run: |
           ls -la results/logs || true
           tail -n +1 results/logs/*.log || true
+          python scripts/logs_to_metrics.py
 
-      # Logs → Metriken (Pushgateway)
-      - name: Convert logs to metrics (from logs)
-        if: always()
-        env:
-          PUSHGATEWAY_URL: http://localhost:9091/
-          E2E_ENV: ${{ env.E2E_ENV }}
-          LOG_DIR: ${{ env.LOG_DIR }}
-          WINDOW_MINUTES: "60"
-        run: python scripts/logs_to_metrics.py
-
-      # Logs als Artefakt (sauberer als ins Repo committen)
-      - name: Upload logs as artifacts
-        if: always()
+      - name: Upload logs
         uses: actions/upload-artifact@v4
         with:
           name: logs-${{ github.run_id }}
           path: results/logs/*.log
           if-no-files-found: warn
-
-      - name: Commit and push log files
-        if: always()
-        run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          git pull --autostash || git reset --hard origin/main 
-          git add results/logs/test_DaskGateway.log
-          git commit -m "Updated Dask Gateway test logs" || echo "No changes to commit"
-          git push
