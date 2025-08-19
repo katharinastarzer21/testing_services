@@ -4,22 +4,30 @@ on:
   push:
     paths:
       - 'scripts/test_dask.py'
+    paths-ignore:
+      - 'results/logs/**'   # verhindert Endlos-Trigger durch eigene Log-Commits
   schedule:
     - cron: "0 * * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   test-dask:
-    # Falls Pushgateway intern ist, nutze self-hosted statt ubuntu-latest
     runs-on: self-hosted
     timeout-minutes: 30
     env:
-      E2E_ENV: dev               # oder prod; landet als Label in den Metriken
+      E2E_ENV: dev
       LOG_DIR: results/logs
 
     steps:
-      - name: Check out code
+      - name: Check out main with push perms
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,22 +38,49 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # für den Metrik-Push:
           pip install prometheus-client
 
       - name: Run Dask Gateway Test
         env:
           EODC_USERNAME: ${{ secrets.EODC_USERNAME }}
           EODC_PASSWORD: ${{ secrets.EODC_PASSWORD }}
-        run: |
-          python scripts/test_dask.py
+        run: python scripts/test_dask.py
 
-      - name: Process logs
+      # Debug/Check: Logs vorhanden?
+      - name: List logs
+        if: always()
         run: |
-          python scripts/logs_to_metrics.py
+          echo "=== results/logs ==="
+          ls -la results/logs || true
+          tail -n +1 results/logs/*.log || true
 
+      # Logs → Metriken (Pushgateway)
+      - name: Convert logs to metrics (from logs)
+        if: always()
+        env:
+          PUSHGATEWAY_URL: ${{ secrets.PUSHGATEWAY_URL }}
+          E2E_ENV: ${{ env.E2E_ENV }}
+          LOG_DIR: ${{ env.LOG_DIR }}
+          WINDOW_MINUTES: "60"
+        run: python scripts/logs_to_metrics.py
+
+      # Logs als Artefakt (sauberer als ins Repo committen)
       - name: Upload logs as artifacts
-        uses: actions/upload-artifact@v2
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: logs
+          name: logs-${{ github.run_id }}
           path: results/logs/*.log
+          if-no-files-found: warn
+
+      # Optional: wirklich ins Repo pushen
+      - name: Commit and push log files
+        if: always()
+        run: |
+          set -e
+          git fetch origin main
+          git checkout main
+          git pull --rebase origin main
+          git add -f results/logs/test_dask_gateway.log
+          git commit -m "Update E2E logs [skip ci]" || exit 0
+          git push origin main
